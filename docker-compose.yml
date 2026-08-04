@@ -1,8 +1,21 @@
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.7.1-python3.10
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://user:secret@postgres:5432/tech_test_db
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+    AIRFLOW__WEBSERVER__SECRET_KEY: "my_super_secret_key_123"
+  volumes:
+    - ./dags:/opt/airflow/dags
+  depends_on:
+    postgres:
+      condition: service_healthy
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: de_tech_test_db
-    restart: always
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: secret
@@ -12,45 +25,36 @@ services:
     volumes:
       - ./database:/docker-entrypoint-initdb.d
       - pgdata:/var/lib/postgresql/data
-
-  airflow-init:
-    image: apache/airflow:2.7.1-python3.10
-    environment:
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:secret@postgres:5432/tech_test_db
-    command: version
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d tech_test_db"]
+      interval: 2s
+      retries: 1
 
   airflow-webserver:
-    image: apache/airflow:2.7.1-python3.10
-    container_name: de_airflow_webserver
-    restart: always
-    depends_on:
-      - postgres
-    environment:
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:secret@postgres:5432/tech_test_db
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    <<: *airflow-common
+    command: webserver
     ports:
       - "8080:8080"
-    volumes:
-      - ./dags:/opt/airflow/dags
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
 
   airflow-scheduler:
-    image: apache/airflow:2.7.1-python3.10
-    container_name: de_airflow_scheduler
-    restart: always
+    <<: *airflow-common
+    command: scheduler
     depends_on:
-      - postgres
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+    command: version
     environment:
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:secret@postgres:5432/tech_test_db
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-    volumes:
-      - ./dags:/opt/airflow/dags
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow
+
 volumes:
   pgdata:
