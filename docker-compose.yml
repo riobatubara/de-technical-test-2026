@@ -13,5 +13,44 @@ services:
       - ./database:/docker-entrypoint-initdb.d
       - pgdata:/var/lib/postgresql/data
 
+  airflow-init:
+    image: apache/airflow:2.7.1-python3.10
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:secret@postgres:5432/tech_test_db
+    command: version
+
+  airflow-webserver:
+    image: apache/airflow:2.7.1-python3.10
+    container_name: de_airflow_webserver
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:secret@postgres:5432/tech_test_db
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+
+  airflow-scheduler:
+    image: apache/airflow:2.7.1-python3.10
+    container_name: de_airflow_scheduler
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:secret@postgres:5432/tech_test_db
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    volumes:
+      - ./dags:/opt/airflow/dags
 volumes:
   pgdata:
