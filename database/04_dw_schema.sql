@@ -2,17 +2,10 @@
 CREATE TABLE IF NOT EXISTS dim_date (
     date_key INT PRIMARY KEY, -- YYYYMMDD
     full_date DATE NOT NULL,
-    day_of_week INT NOT NULL,
-    day_name VARCHAR(10) NOT NULL,
-    day_of_month INT NOT NULL,
-    month_number INT NOT NULL,
-    month_name VARCHAR(15) NOT NULL,
-    quarter INT NOT NULL,
+    day INT NOT NULL,
+    month INT NOT NULL,
     year INT NOT NULL,
-    week_of_year INT,
-    is_weekend BOOLEAN NOT NULL,
-    is_month_start BOOLEAN,
-    is_month_end BOOLEAN
+    quarter INT NOT NULL
 );
 
 -- Dimension: Customer
@@ -44,10 +37,6 @@ CREATE TABLE IF NOT EXISTS dim_campaign (
     channel VARCHAR(50) NOT NULL
 );
 
--- Default row for "No Campaign"
-INSERT INTO dim_campaign (campaign_id, campaign_name, start_date, end_date, channel)
-VALUES (0, 'No Campaign', CURRENT_DATE, CURRENT_DATE, 'N/A');
-
 -- Fact: sales
 CREATE TABLE IF NOT EXISTS fact_sales (
     sales_key BIGSERIAL,
@@ -62,8 +51,18 @@ CREATE TABLE IF NOT EXISTS fact_sales (
 
     quantity INT NOT NULL,
     unit_price NUMERIC(10,2) NOT NULL,
-    gross_amount NUMERIC(12,2) NOT NULL,
-    allocated_total_amount NUMERIC(12,2) NOT NULL,
+    gross_amount NUMERIC(12,2) NOT NULL, -- quantity × unit_price
+    
+    net_amount NUMERIC(12,2) NOT NULL, -- gross − discount
+
+    tax_amount DECIMAL(12,2), -- for finance
+    total_amount DECIMAL(12,2), -- net + tax
+
+    cost_amount DECIMAL(12,2), -- product cost
+    profit_amount DECIMAL(12,2), -- net − cost
+
+    item_count INT, -- basket size
+    avg_item_price DECIMAL(10,2), -- pricing behavior
 
     PRIMARY KEY (sales_key, transaction_date_key),
 
