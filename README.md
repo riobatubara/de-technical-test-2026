@@ -1,66 +1,72 @@
 # de-technical-test-2026
 
-docker exec -it de_tech_test_db psql -U user -d tech_test_db
+<!-- docker exec -it de_tech_test_db psql -U user -d tech_test_db
 
+docker exec -it de_kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic stream.transaction.raw
+
+SELECT ti.transaction_item_id, t.transaction_id, ti.product_id, ti.quantity, ti.price, t.total_amount
+FROM transactions t
+RIGHT JOIN transaction_items ti ON ti.transaction_id = t.transaction_id
+LIMIT 4; -->
 
 
 ## Explanation of Modeling Choices
-Star Schema Selection: Simplifies analytical business queries and delivers faster aggregations (SUM, AVG) compared to highly normalized transactional setups.
-
-Fact Table Granularity: Designed at the transaction item line level. This allows deep slice-and-dice operations by both product categories and customer demographics without losing granular data.
-
-Surrogate Keys (_key): Used instead of operational business IDs (_id) to isolate the Data Warehouse from operational system changes and seamlessly support future Slowly Changing Dimensions (SCD).
-
-Dedicated dim_date: Replaces raw SQL date functions with an integer key index (YYYYMMDD). This avoids slow date-parsing computations during execution and speeds up seasonal and quarterly filtering.
-
-Degenerate Dimensions: Operational transaction_id and transaction_item_id are kept inside the fact table for complete data auditability back to the operational database.
-
+- Star Schema Selection: Simplifies analytical queries, delivers faster aggregations, and provides a business-friendly structure for BI tools.
+- Fact Table Granularity: Set at the transaction line item level to allow granular slice-and-dice operations without losing data.
+- Surrogate Keys (_key): Used instead of operational IDs to speed up joins via integer formats, decouple the warehouse from source changes, and support future Slowly Changing Dimensions (SCD).
+- Dedicated dim_date: Replaces raw SQL date functions with an integer index (YYYYMMDD) to eliminate slow runtime parsing and accelerate seasonal filtering.
+- Degenerate Dimensions: Retains operational IDs in the fact table to ensure complete data auditability back to the source system.
+- Measures Strategy: Stores pre-computed, CHECK-validated metrics to eliminate runtime recalculations and enforce data consistency.
+- Campaign Handling: Uses a default "No Campaign" row to avoid NULL joins and simplify query logic.
+- Fact Partitioning: Partitioned by transaction_date_key to accelerate scans on large tables through automatic partition pruning.
 
 
-Modeling Choices
-1. Star Schema
-- Simple joins → fast analytics
-- Easy for BI tools
-- Denormalized dimensions → fewer joins
 
-2. Surrogate Keys
-- customer_key, product_key, etc.
-- why:
-    - Faster joins (INT)
-    - Decouples from source systems
-    - Supports history (future SCD2)
+1. DAG Trigger (Daily)
+- Runs once per day
+- Starts from start_date = 2025-01-01
 
-3. Date Dimension
-- Precomputed fields (month, quarter, etc.)
-- Avoids runtime calculations
-- Enables fast filtering & grouping
+2. Task 1: Extract (extract_to_staging)
+- Connect to Postgres
+- Stored into staging tables:
+    stag_customers
+    stag_products
+    stag_transactions
+    stag_transaction_items
+    stag_marketing_campaigns
+    Extract data from source tables
 
-4. Fact Table Design
-- Grain = one transaction line item
-- Identified by:
-```
-transaction_id + transaction_item_id
-```
-- Ensures:
-    - No duplicates
-    - Accurate aggregation
+3. Task 2: Transform & Load (transform_and_load_dw)
 
-5. Measures Strategy
-- stored:
-    - quantity
-    - unit_price
-    - gross_amount (validated via CHECK)
-- why:
-    - Performance (no recalculation at query time)
-    - Controlled consistency
-
-6. Campaign Handling
-- Uses default “No Campaign” row
-- Avoids NULL joins
-- Keeps queries simpler
-
-7. Partitioning (Fact only)
-- Partition by transaction_date_key
-- why:
-    - Large table → faster scans
-    - Prunes partitions automatically
+A. Read Staging Data
+- Load all staging tables into pandas DataFrames
+B. Transform
+- Clean + validate:
+- Transactions (dates, amounts, duplicates)
+- Customers (email, city, signup date)
+- Products (price, category)
+- Campaigns (date logic)
+- Create dimensions:
+    dim_customer
+    dim_product
+    dim_campaign
+    dim_date
+C. Load Dimensions
+- Upsert into:
+    dim_customer
+    dim_product
+    dim_campaign
+    dim_date
+D. Build Fact Table (fact_sales)
+- Join:
+    transactions + items + dimensions
+- Calculate metrics:
+    gross, net, tax, total
+    cost, profit
+    item_count, avg_item_price
+- Remove duplicates (existing records check)
+E. Partition Handling
+- Create monthly partitions:
+    fact_sales_YYYY_MM
+F. Load Fact
+Insert into fact_sales
