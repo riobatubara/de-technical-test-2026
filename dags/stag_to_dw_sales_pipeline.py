@@ -3,10 +3,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import create_engine, text, Table, MetaData
+from config import conf
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 
 # Configure Logging
@@ -74,7 +74,7 @@ def extract_to_staging():
 
     try:
         engine = create_engine(
-            "postgresql+psycopg2://user:secret@postgres:5432/tech_test_db"
+            f"postgresql+psycopg2://{conf.DB_USER}:{conf.DB_PASSWORD}@{conf.DB_HOST}:{conf.DB_PORT}/{conf.DB_NAME}"
         )
         
         tables = [
@@ -124,7 +124,7 @@ def transform_and_load_dw():
         logger.info("Transformation and DW Target Loading.")
 
         engine = create_engine(
-            "postgresql+psycopg2://user:secret@postgres:5432/tech_test_db"
+            f"postgresql+psycopg2://{conf.DB_USER}:{conf.DB_PASSWORD}@{conf.DB_HOST}:{conf.DB_PORT}/{conf.DB_NAME}"
         )
         
 
