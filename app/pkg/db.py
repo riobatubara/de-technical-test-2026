@@ -1,10 +1,12 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from app.pkg.config import conf
+from pkg.config import conf
 
 
 def get_connection():
     return psycopg2.connect(
+        # for local testing
+        # host="localhost",
         host=conf.DB_HOST,
         dbname=conf.DB_NAME,
         user=conf.DB_USER,
