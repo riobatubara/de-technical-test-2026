@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS stag_customers (
     name VARCHAR(100),
     email VARCHAR(150),
     city VARCHAR(100),
-    signup_date DATE
+    signup_date TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS stag_products (
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS stag_products (
 CREATE TABLE IF NOT EXISTS stag_transactions (
     transaction_id INT,
     customer_id INT,
-    transaction_date DATE,
+    transaction_date TIMESTAMP,
     total_amount DECIMAL(12,2)
 );
 
