@@ -1,13 +1,20 @@
 x-airflow-common: &airflow-common
   image: apache/airflow:2.7.1-python3.10
   environment: &airflow-common-env
+    AIRFLOW_PROJ_DIR: ${PWD}
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://user:secret@postgres:5432/tech_test_db
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
     AIRFLOW__WEBSERVER__SECRET_KEY: "my_super_secret_key_123"
+    DB_HOST: ${DB_HOST}
+    DB_PORT: ${DB_PORT}
+    DB_NAME: ${DB_NAME}
+    DB_USER: ${DB_USER}
+    DB_PASSWORD: ${DB_PASSWORD}
   volumes:
     - ./dags:/opt/airflow/dags
+  user: "0:0"
   depends_on:
     postgres:
       condition: service_healthy
@@ -17,18 +24,18 @@ services:
     image: postgres:15-alpine
     container_name: de_tech_test_db
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: tech_test_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - ./database:/docker-entrypoint-initdb.d
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d tech_test_db"]
-      interval: 2s
-      retries: 1
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 5
 
   airflow-webserver:
     <<: *airflow-common
