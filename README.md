@@ -21,8 +21,10 @@ LIMIT 4; -->
 - Fact Partitioning: Partitioned by transaction_date_key to accelerate scans on large tables through automatic partition pruning.
 
 
+## Architecture
+![Architecture Pipeline](./architecture-pipeline.png)
 
-1. DAG Trigger (Daily)
+<!-- 1. DAG Trigger (Daily)
 - Runs once per day
 - Starts from start_date = 2025-01-01
 
@@ -69,4 +71,4 @@ E. Partition Handling
 - Create monthly partitions:
     fact_sales_YYYY_MM
 F. Load Fact
-Insert into fact_sales
+Insert into fact_sales -->
