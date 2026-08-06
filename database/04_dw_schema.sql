@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS dim_customer (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL,
     city VARCHAR(100) NOT NULL,
-    signup_date DATE NOT NULL
+    signup_date TIMESTAMP NOT NULL
 );
 
 -- Dimension: Product
