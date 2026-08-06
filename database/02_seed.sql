@@ -47,6 +47,7 @@ FROM (
     ) t1
 ) t2;
 
+
 -- Seed Transactions
 INSERT INTO transactions (customer_id, transaction_date, total_amount)
 SELECT 
@@ -60,77 +61,45 @@ FROM (
     SELECT 
         c.customer_id,
         c.signup_date,
-        
-        SUM(
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1 
-                    FROM marketing_campaigns mc
-                    WHERE (c.signup_date + (running_day::int * interval '1 day'))
-                          BETWEEN mc.start_date AND mc.end_date
-                )
-                THEN gap_days * 0.5
-                ELSE gap_days
-            END
-        ) OVER (
-            PARTITION BY c.customer_id 
-            ORDER BY seq
-        ) AS cumulative_days
-
+        SUM(gap_days) OVER (PARTITION BY c.customer_id ORDER BY seq) AS cumulative_days
     FROM customers c
-
     JOIN LATERAL (
-        SELECT 
-            seq,
-            SUM(gap_days) OVER (ORDER BY seq) AS running_day,
-            gap_days
-        FROM (
-            SELECT 
-                seq,
+        SELECT seq, gap_days FROM (
+            SELECT seq,
                 CASE 
                     WHEN c.customer_id <= 20 THEN (random()*7 + 3)::int
                     WHEN c.customer_id <= 30 THEN (random()*20 + 10)::int
                     ELSE (random()*30 + 15)::int
                 END AS gap_days
-            FROM generate_series(
-                1,
-                CASE 
-                    WHEN c.customer_id <= 20 THEN 15
-                    WHEN c.customer_id <= 30 THEN 8
-                    ELSE 4
-                END
-            ) AS seq
+            FROM generate_series(1, CASE WHEN c.customer_id <= 20 THEN 15 WHEN c.customer_id <= 30 THEN 8 ELSE 4 END) AS seq
         ) base
     ) t ON true
 ) final
 WHERE signup_date + (cumulative_days::int * interval '1 day') <= CURRENT_TIMESTAMP;
-
 
 -- Seed Transaction Items
 INSERT INTO transaction_items (transaction_id, product_id, quantity, price)
 SELECT 
     tr.transaction_id,
     p.product_id,
-    
     CASE 
-        WHEN tr.customer_id <= 30 THEN (random()*5+2)::int
-        ELSE (random()*3+1)::int
-    END,
-
+        WHEN tr.customer_id <= 30 THEN floor(random() * 6 + 2)::int
+        ELSE floor(random() * 3 + 1)::int
+    END AS quantity,
     p.price
 FROM transactions tr
 JOIN LATERAL (
     SELECT product_id, price
     FROM products
     ORDER BY random()
-    LIMIT 
-        CASE 
-            WHEN tr.customer_id <= 20 THEN (random()*4+2)::int  -- loyal = more items
-            ELSE (random()*3+1)::int
-        END
+    LIMIT CASE 
+        WHEN tr.customer_id <= 20 THEN floor(random() * 3 + 2)::int
+        ELSE floor(random() * 3 + 1)::int
+    END
 ) p ON true;
 
--- Update totals transaction to match items
+
+-- 4. Update totals transaction to match items
 UPDATE transactions t
 SET total_amount = sub.total
 FROM (
@@ -140,15 +109,6 @@ FROM (
 ) sub
 WHERE t.transaction_id = sub.transaction_id;
 
-UPDATE transaction_items ti
-SET quantity = quantity + 1
-FROM transactions tr
-WHERE ti.transaction_id = tr.transaction_id
-AND EXISTS (
-    SELECT 1
-    FROM marketing_campaigns mc
-    WHERE tr.transaction_date BETWEEN mc.start_date AND mc.end_date
-);
 
 
 -- Seed Marketing Campaigns
