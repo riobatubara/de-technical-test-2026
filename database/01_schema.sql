@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS customers (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
     city VARCHAR(100) NOT NULL,
-    signup_date DATE NOT NULL
+    signup_date TIMESTAMP NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS products (
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS transactions (
     transaction_id SERIAL PRIMARY KEY,
     customer_id INT NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
-    transaction_date DATE NOT NULL,
+    transaction_date TIMESTAMP NOT NULL,
     total_amount DECIMAL(12, 2) NOT NULL CHECK (total_amount >= 0)
 );
 
