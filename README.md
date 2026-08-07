@@ -21,6 +21,9 @@ LIMIT 4; -->
 - Fact Partitioning: Partitioned by transaction_date_key to accelerate scans on large tables through automatic partition pruning.
 
 
+## ERD Schema
+![ERD Schema](./ERD.jpg)
+
 ## Architecture
 ![Architecture Pipeline](./architecture-pipeline.jpeg)
 
