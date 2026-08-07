@@ -22,7 +22,7 @@ LIMIT 4; -->
 
 
 ## Architecture
-![Architecture Pipeline](./architecture-pipeline.png)
+![Architecture Pipeline](./architecture-pipeline.jpeg)
 
 <!-- 1. DAG Trigger (Daily)
 - Runs once per day
