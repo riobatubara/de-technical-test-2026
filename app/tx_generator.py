@@ -53,7 +53,7 @@ def print_completed_aggregation(counts, printed_minutes):
 
     for minute in list(counts.keys()):
         if minute < current_minute and minute not in printed_minutes:
-            print(f"{minute} -> {counts[minute]} transactions")
+            print(f"{minute} -> {counts[minute]} transactions", flush=True)
             printed_minutes.add(minute)
             del counts[minute]
 
