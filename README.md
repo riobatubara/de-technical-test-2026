@@ -29,7 +29,7 @@ LIMIT 4; -->
 ### Explanation Architecture
 #### Stream Pipeline
 The stream pipeline handles continuous, real-time data ingestion and initial storage.
-- Transaction Generator: Simulates/Generates tranasction data. It fetches details from the customers and products tables to build complete transaction contexts.
+- Transaction Generator: Simulates/Generates tranasction data. It fetches details from the customers and products tables to build complete transaction contexts. Simultaneously, it calculates and prints out aggregated transactions per minute directly to the Console Log (Terminal).
 - Apache Kafka: Acts as the real-time message broker. The generator publishes raw transactions to the topic stream.transaction.raw.
 - Processor: Consumes the messages from Kafka under the consumer group transaction_group. It processes the stream and inserts the records into databases: transactions and transaction_items.
 
