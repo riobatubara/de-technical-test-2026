@@ -1,15 +1,5 @@
 # de-technical-test-2026
 
-<!-- docker exec -it de_tech_test_db psql -U user -d tech_test_db
-
-docker exec -it de_kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic stream.transaction.raw
-
-SELECT ti.transaction_item_id, t.transaction_id, ti.product_id, ti.quantity, ti.price, t.total_amount
-FROM transactions t
-RIGHT JOIN transaction_items ti ON ti.transaction_id = t.transaction_id
-LIMIT 4; -->
-
-
 ## Explanation of Modeling Choices
 - Star Schema Selection: Make query simple, fast count, and very easy for BI tools.
 - Fact Table Granularity: Set at the transaction line item level to allow granular slice-and-dice operations without losing data.
@@ -41,51 +31,63 @@ The ETL (Extract, Transform, Load) pipeline handles periodic batch processing to
     - It populates the Dimension Tables (dim_customer, dim_product, dim_date, dim_campaign).
     - It creates specific data partitions before inserting the transactional metrics into the Fact Table (fact_sales) to optimize analytical query speeds.
 
-<!-- 1. DAG Trigger (Daily)
-- Runs once per day
-- Starts from start_date = 2025-01-01
 
-2. Task 1: Extract (extract_to_staging)
-- Connect to Postgres
-- Stored into staging tables:
-    stag_customers
-    stag_products
-    stag_transactions
-    stag_transaction_items
-    stag_marketing_campaigns
-    Extract data from source tables
+## How to run
 
-3. Task 2: Transform & Load (transform_and_load_dw)
+### Prerequisites
+this project is run on this environment:
+* Python 3.12.3
+* Docker version 28.5.1
 
-A. Read Staging Data
-- Load all staging tables into pandas DataFrames
-B. Transform
-- Clean + validate:
-- Transactions (dates, amounts, duplicates)
-- Customers (email, city, signup date)
-- Products (price, category)
-- Campaigns (date logic)
-- Create dimensions:
-    dim_customer
-    dim_product
-    dim_campaign
-    dim_date
-C. Load Dimensions
-- Upsert into:
-    dim_customer
-    dim_product
-    dim_campaign
-    dim_date
-D. Build Fact Table (fact_sales)
-- Join:
-    transactions + items + dimensions
-- Calculate metrics:
-    gross, net, tax, total
-    cost, profit
-    item_count, avg_item_price
-- Remove duplicates (existing records check)
-E. Partition Handling
-- Create monthly partitions:
-    fact_sales_YYYY_MM
-F. Load Fact
-Insert into fact_sales -->
+### 1. Initialization
+Before running any components, grant execution permissions to the main runner script:
+```bash
+chmod +x run.sh
+```
+
+### 2. Running the ETL Pipeline
+To execute the ETL pipeline, run:
+```bash
+./run.sh etl
+```
+* **Airflow Webserver Access:** Open your browser and log in with **Username:** `airflow` | **Password:** `airflow`
+
+
+## 3. Running the Transaction Stream Data Generator
+To start generating stream data and see the aggregate transaction count per minute, run:
+```bash
+./run.sh stream
+```
+
+
+To view the live stream aggregator, monitor the container logs:
+```bash
+docker logs -f tx_generator
+```
+*Expected Log Output:*
+```text
+2026-08-07 02:17:00 -> 26 transactions
+2026-08-07 02:18:00 -> 58 transactions
+2026-08-07 02:19:00 -> 58 transactions
+2026-08-07 02:20:00 -> 59 transactions
+```
+
+### 4. Stopping the Services
+To stop and tear down all running services, execute:
+```bash
+./run.sh down
+```
+
+## Infrastructure Access & Debugging
+
+### Database Container
+Access the PostgreSQL database container directly via `psql`:
+```bash
+docker exec -it de_tech_test_db psql -U user -d tech_test_db
+```
+
+### Kafka Container
+Consume and view live messages from the raw transaction topic:
+```bash
+docker exec -it de_kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic stream.transaction.raw
+```
