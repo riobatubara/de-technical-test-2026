@@ -112,6 +112,27 @@ services:
       echo 'Topics ready';
       "
 
+  generator:
+    build: .
+    container_name: tx_generator
+    depends_on:
+      kafka:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: python -m app.tx_generator
+
+  processor:
+    build: .
+    container_name: processor
+    depends_on:
+      kafka:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: python -m app.processor
+
+
 volumes:
   pgdata:
   kafka_data:
