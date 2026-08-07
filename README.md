@@ -11,14 +11,13 @@ LIMIT 4; -->
 
 
 ## Explanation of Modeling Choices
-- Star Schema Selection: Simplifies analytical queries, delivers faster aggregations, and provides a business-friendly structure for BI tools.
+- Star Schema Selection: Make query simple, fast count, and very easy for BI tools.
 - Fact Table Granularity: Set at the transaction line item level to allow granular slice-and-dice operations without losing data.
-- Surrogate Keys (_key): Used instead of operational IDs to speed up joins via integer formats, decouple the warehouse from source changes, and support future Slowly Changing Dimensions (SCD).
-- Dedicated dim_date: Replaces raw SQL date functions with an integer index (YYYYMMDD) to eliminate slow runtime parsing and accelerate seasonal filtering.
-- Degenerate Dimensions: Retains operational IDs in the fact table to ensure complete data auditability back to the source system.
-- Measures Strategy: Stores pre-computed, CHECK-validated metrics to eliminate runtime recalculations and enforce data consistency.
-- Campaign Handling: Uses a default "No Campaign" row to avoid NULL joins and simplify query logic.
-- Fact Partitioning: Partitioned by transaction_date_key to accelerate scans on large tables through automatic partition pruning.
+- Surrogate Keys (_key): Use number key, not source ID. Make join fast, safe from system change, and good for future Slowly Changing Dimensions (SCD).
+- Dedicated dim_date: Change SQL date to number index (YYYYMMDD). No slow parsing, make season filter fast.
+- Degenerate Dimensions: Keep old source ID inside fact table for easy check back to system.
+- Measures Strategy: Save already-calculated and checked numbers. No recalculate at runtime, data always same.
+- Fact Partitioning: Split table by transaction_date_key. Big table scan become very fast because auto-drop unneeded part.
 
 
 ## ERD Schema
@@ -26,6 +25,21 @@ LIMIT 4; -->
 
 ## Architecture
 ![Architecture Pipeline](./architecture-pipeline.jpeg)
+
+### Explanation Architecture
+#### Stream Pipeline
+The stream pipeline handles continuous, real-time data ingestion and initial storage.
+- Transaction Generator: Simulates/Generates tranasction data. It fetches details from the customers and products tables to build complete transaction contexts.
+- Apache Kafka: Acts as the real-time message broker. The generator publishes raw transactions to the topic stream.transaction.raw.
+- Processor: Consumes the messages from Kafka under the consumer group transaction_group. It processes the stream and inserts the records into databases: transactions and transaction_items.
+
+#### ETL Pipeline
+The ETL (Extract, Transform, Load) pipeline handles periodic batch processing to move data into the data warehouse.
+- Extract: Fetches historical or batched records from all source tables (customers, products, marketing_campaigns, transactions, and transaction_items) and moves them into a temporary Staging Schema.
+- Transformation: Reads from the staging schema to clean, structure, and format the data according to data warehouse standards.
+- Load & Create Partition: Inserts the processed, structured data into the Data Warehouse (DW).
+    - It populates the Dimension Tables (dim_customer, dim_product, dim_date, dim_campaign).
+    - It creates specific data partitions before inserting the transactional metrics into the Fact Table (fact_sales) to optimize analytical query speeds.
 
 <!-- 1. DAG Trigger (Daily)
 - Runs once per day
