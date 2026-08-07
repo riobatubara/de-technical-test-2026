@@ -10,8 +10,8 @@ class Config:
     DB_PASSWORD = os.getenv('DB_PASSWORD', 'secret')
     DB_PORT = os.getenv('DB_PORT', '5432')
 
-    KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "localhost:9092")
-    KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "stream.data.raw")
-    KAFKA_GROUP = os.getenv("KAFKA_GROUP", "data_stream_group")
+    KAFKA_BROKERS = os.getenv("KAFKA_BOOTSTRAP", "localhost:9092")
+    KAFKA_TOPIC = os.getenv("KAFKA_TOPIC_RAW", "stream.data.raw")
+    KAFKA_GROUP = os.getenv("KAFKA_GROUP_RAW", "data_stream_group")
 
 conf = Config()
